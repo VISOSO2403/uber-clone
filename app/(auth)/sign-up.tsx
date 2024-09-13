@@ -1,13 +1,15 @@
 import React, { useState } from "react";
 import { Link, router } from "expo-router";
 import ReactNativeModal from "react-native-modal";
-import { View, Text, ScrollView, Image } from "react-native";
+import { View, Text, ScrollView, Image, Alert } from "react-native";
 
 import { icons, images } from "@/constants";
 import { OAuth, CustomButton, InputField } from "@/components";
+import { useSignUp } from "@clerk/clerk-expo";
 
 const SignUp = () => {
-  const [showSuccessModal, setShowSuccessModal] = useState(true);
+  const { isLoaded, signUp, setActive } = useSignUp();
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const [form, setForm] = useState({
     name: "",
@@ -20,9 +22,52 @@ const SignUp = () => {
     code: "",
   });
 
-  const onSignUpPress = async () => {};
+  const onSignUpPress = async () => {
+    if (!isLoaded) return;
 
-  const onPressVerify = async () => {};
+    try {
+      await signUp.create({
+        emailAddress: form.email,
+        password: form.password,
+      });
+
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+
+      setVerification({ ...verification, state: "pending" });
+    } catch (err: any) {
+      console.log(JSON.stringify(err, null, 2));
+      Alert.alert("Error", err.errors[0].longMessage);
+    }
+  };
+
+  const onPressVerify = async () => {
+    if (!isLoaded) return;
+
+    try {
+      const completeSignUp = await signUp.attemptEmailAddressVerification({
+        code: verification.code,
+      });
+
+      if (completeSignUp.status === "complete") {
+        // TODO: Create user in database
+
+        await setActive({ session: completeSignUp.createdSessionId });
+        setVerification({ ...verification, state: "success" });
+      } else {
+        setVerification({
+          ...verification,
+          error: "Verification failed",
+          state: "failed",
+        });
+      }
+    } catch (err: any) {
+      setVerification({
+        ...verification,
+        error: err.errors[0].longMessage,
+        state: "failed",
+      });
+    }
+  };
 
   return (
     <ScrollView className="flex-1 bg-white">
