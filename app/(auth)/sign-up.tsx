@@ -6,6 +6,7 @@ import { View, Text, ScrollView, Image, Alert } from "react-native";
 import { icons, images } from "@/constants";
 import { OAuth, CustomButton, InputField } from "@/components";
 import { useSignUp } from "@clerk/clerk-expo";
+import { fetchAPI } from "@/lib/fetch";
 
 const SignUp = () => {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -49,7 +50,14 @@ const SignUp = () => {
       });
 
       if (completeSignUp.status === "complete") {
-        // TODO: Create user in database
+        await fetchAPI("/(api)/user", {
+          method: "POST",
+          body: JSON.stringify({
+            name: form.name,
+            email: form.email,
+            clerkId: completeSignUp.createdUserId,
+          }),
+        });
 
         await setActive({ session: completeSignUp.createdSessionId });
         setVerification({ ...verification, state: "success" });
